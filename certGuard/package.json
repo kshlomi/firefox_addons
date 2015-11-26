@@ -1,0 +1,16 @@
+{
+  "title": "CertGuard",
+  "name": "certguard",
+  "version": "0.0.1",
+  "description": "Guard your certificates... big time~",
+  "main": "index.js",
+  "author": "Shlomi & Lior",
+  "engines": {
+    "firefox": ">=38.0a1",
+    "fennec": ">=38.0a1"
+  },
+  "license": "MIT",
+  "keywords": [
+    "jetpack"
+  ]
+}
