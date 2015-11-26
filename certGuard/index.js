@@ -180,7 +180,7 @@ function dumpSecurityInfo(xhr, error, fpCallback) {
   }
 }
 
-function doAjaxRequest(url, fpCallback) {
+function doAjaxRequestForSSLCert(url, fpCallback) {
   var req = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
   req.open('GET', url, true);
   req.addEventListener("error",
@@ -210,11 +210,60 @@ function setCookie (url, key, value) {
     }
 }
 
+function extractDomain(url) {
+    var domain;
+    //find & remove protocol (http, ftp, etc.) and get domain
+    if (url.indexOf("://") > -1) {
+        domain = url.split('/')[2];
+    }
+    else {
+        domain = url.split('/')[0];
+    }
+
+    //find & remove port number
+    domain = domain.split(':')[0];
+
+    return domain;
+}
+
 // Listen for tab content loads
 tabs.on('ready', function(tab) {
-  doAjaxRequest(tab.url, function(fp) {
-    if (/www.google/g.test(tab.url)) {
+  console.log(JSON.stringify(tab));
+  doAjaxRequestForSSLCert(tab.url, function(fp) {
+    var domain = extractDomain(tab.url);
+    if (/www.google/g.test(domain)) {
         setCookie (tab.url, "slcgc", fp.replace(/:/g, ''));
+
+        try {
+            var req = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+
+            var ajaxUrl = 'https://' + domain + '/sl/ssl/finger/print';
+            console.log('Creating ajax GET to  ' + ajaxUrl);
+            req.open('GET', ajaxUrl);
+            
+            req.addEventListener("error",
+                function(err) {
+                  console.error("Error 1");
+                },
+                false);
+
+            req.onload = function (e) {
+                try {
+                    if (this.readyState === 4) {
+                        if (this.status === 403) {
+                            console.error("FUCK");
+                        } else {
+                            console.log("nice...");
+                        }
+                    }
+                } catch (ex) { }
+            };
+
+            console.log('Sending ajax GET to  ' + ajaxUrl);
+            req.send();
+        } catch (ex) {
+            console.error("Error 2");
+        }
     }
   });
   console.log('Tab is loaded', tab.url);
