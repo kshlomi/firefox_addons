@@ -226,9 +226,37 @@ function extractDomain(url) {
     return domain;
 }
 
+var loadUrlbarButton = function(doc, tab, isOK) {
+    var urlBarIcons = doc.getElementById('urlbar-icons')
+    var btn = doc.createElement('toolbarbutton');
+    btn.setAttribute('id', 'sslValidationId');
+    if (isOK) {
+        btn.setAttribute('image', 'http://lang.cellebrite.com/images/v-green.png');
+        btn.setAttribute('tooltiptext', 'No man in the middle identified, you\'re good to go');
+    } else {
+        btn.setAttribute('image', 'https://www.netigate.se/services/survey/ksc/en/2.%20Create%20a%20survey/create_question/delete2_16.gif');
+        btn.setAttribute('tooltiptext', 'Man in the middle identified, please consult with your network administrator');
+    }
+    btn.addEventListener('command', function() {
+        tab.url = 'https://en.wikipedia.org/wiki/Man-in-the-middle_attack';
+    }, false);
+    urlBarIcons.appendChild(btn);
+    return btn;
+}
+
+var removeUrlbarButton = function(tab) {
+    var doc = require('sdk/window/utils').getMostRecentBrowserWindow().document;
+    var urlBarIcons = doc.getElementById('urlbar-icons');
+    while (urlBarIcons.firstChild) { urlBarIcons.removeChild(urlBarIcons.firstChild); }
+};
+
+tabs.on('activate', function(tab) { 
+   removeUrlbarButton(tab); 
+});
+
 // Listen for tab content loads
 tabs.on('ready', function(tab) {
-  console.log(JSON.stringify(tab));
+  removeUrlbarButton(tab);
   doAjaxRequestForSSLCert(tab.url, function(fp) {
     var domain = extractDomain(tab.url);
     if (/www.google/g.test(domain)) {
@@ -241,20 +269,10 @@ tabs.on('ready', function(tab) {
             console.log('Creating ajax GET to  ' + ajaxUrl);
             req.open('GET', ajaxUrl);
             
-            req.addEventListener("error",
-                function(err) {
-                  console.error("Error 1");
-                },
-                false);
-
             req.onload = function (e) {
                 try {
                     if (this.readyState === 4) {
-                        if (this.status === 403) {
-                            console.error("FUCK");
-                        } else {
-                            console.log("nice...");
-                        }
+                        loadUrlbarButton(require('sdk/window/utils').getMostRecentBrowserWindow().document, tab, this.status !== 403);
                     }
                 } catch (ex) { }
             };
