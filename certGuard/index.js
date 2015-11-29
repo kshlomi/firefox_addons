@@ -1,6 +1,6 @@
 var tabs = require("sdk/tabs");
-// Adapted from the patch for mozTCPSocket error reporting (bug 861196).
-
+var panels = require ("sdk/panel");
+var self = require ("sdk/self");
 const {Cc,Ci} = require("chrome");
 
 function createTCPErrorFromFailedXHR(xhr) {
@@ -229,18 +229,22 @@ function extractDomain(url) {
 var loadUrlbarButton = function(doc, tab, statusCode) {
     if (statusCode !== 200 && statusCode !== 403) return;
 
-    var urlBarIcons = doc.getElementById('urlbar-icons')
     var btn = doc.createElement('toolbarbutton');
+
+    var panel = null;
+    var urlBarIcons = doc.getElementById('urlbar-icons')
     btn.setAttribute('id', 'sslValidationId');
     if (statusCode === 200) {
         btn.setAttribute('image', 'http://lang.cellebrite.com/images/v-green.png');
         btn.setAttribute('tooltiptext', 'No man in the middle identified, you\'re good to go');
+        panel =  panels.Panel({contentURL: self.data.url("panel_ok.html")});
     } else if (statusCode === 403) {
         btn.setAttribute('image', 'https://www.netigate.se/services/survey/ksc/en/2.%20Create%20a%20survey/create_question/delete2_16.gif');
         btn.setAttribute('tooltiptext', 'Man in the middle identified, please consult with your network administrator');
+        panel =  panels.Panel({contentURL: self.data.url("panel_bad.html")});
     }
-    btn.addEventListener('command', function() {
-        tab.url = 'https://en.wikipedia.org/wiki/Man-in-the-middle_attack';
+    btn.addEventListener('click',function(ev) {
+        panel.show({'position':{'left':ev.clientX,'top':0}})
     }, false);
     urlBarIcons.appendChild(btn);
     return btn;
