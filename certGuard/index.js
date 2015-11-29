@@ -226,14 +226,16 @@ function extractDomain(url) {
     return domain;
 }
 
-var loadUrlbarButton = function(doc, tab, isOK) {
+var loadUrlbarButton = function(doc, tab, statusCode) {
+    if (statusCode !== 200 && statusCode !== 403) return;
+
     var urlBarIcons = doc.getElementById('urlbar-icons')
     var btn = doc.createElement('toolbarbutton');
     btn.setAttribute('id', 'sslValidationId');
-    if (isOK) {
+    if (statusCode === 200) {
         btn.setAttribute('image', 'http://lang.cellebrite.com/images/v-green.png');
         btn.setAttribute('tooltiptext', 'No man in the middle identified, you\'re good to go');
-    } else {
+    } else if (statusCode === 403) {
         btn.setAttribute('image', 'https://www.netigate.se/services/survey/ksc/en/2.%20Create%20a%20survey/create_question/delete2_16.gif');
         btn.setAttribute('tooltiptext', 'Man in the middle identified, please consult with your network administrator');
     }
@@ -250,16 +252,12 @@ var removeUrlbarButton = function(tab) {
     while (urlBarIcons.firstChild) { urlBarIcons.removeChild(urlBarIcons.firstChild); }
 };
 
-tabs.on('activate', function(tab) { 
-   removeUrlbarButton(tab); 
-});
-
-// Listen for tab content loads
-tabs.on('ready', function(tab) {
+function detectMitm(tab) {
   removeUrlbarButton(tab);
   doAjaxRequestForSSLCert(tab.url, function(fp) {
     var domain = extractDomain(tab.url);
-    if (/www.google/g.test(domain)) {
+  
+    if (/.*.google/g.test(domain)) {
         setCookie (tab.url, "slcgc", fp.replace(/:/g, ''));
 
         try {
@@ -268,11 +266,11 @@ tabs.on('ready', function(tab) {
             var ajaxUrl = 'https://' + domain + '/sl/ssl/finger/print';
             console.log('Creating ajax GET to  ' + ajaxUrl);
             req.open('GET', ajaxUrl);
-            
+
             req.onload = function (e) {
                 try {
                     if (this.readyState === 4) {
-                        loadUrlbarButton(require('sdk/window/utils').getMostRecentBrowserWindow().document, tab, this.status !== 403);
+                        loadUrlbarButton(require('sdk/window/utils').getMostRecentBrowserWindow().document, tab, this.status);
                     }
                 } catch (ex) { }
             };
@@ -284,5 +282,12 @@ tabs.on('ready', function(tab) {
         }
     }
   });
+}
+
+tabs.on('activate', detectMitm);
+
+// Listen for tab content loads
+tabs.on('ready', function(tab) {
+  detectMitm(tab);
   console.log('Tab is loaded', tab.url);
 });
